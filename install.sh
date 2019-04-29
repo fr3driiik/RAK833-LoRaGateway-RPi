@@ -9,9 +9,11 @@ if [ $UID != 0 ]; then
 fi
 
 SCRIPT_DIR=$(pwd)
-SCRIPT_DIR="$SCRIPT_DIR/LoRa"
-if [ ! -d "$SCRIPT_DIR" ]; then mkdir $SCRIPT_DIR; fi
 pushd $SCRIPT_DIR
+
+INSTALL_DIR="$SCRIPT_DIR/LoRa"
+if [ ! -d "$INSTALL_DIR" ]; then mkdir $INSTALL_DIR; fi
+pushd $INSTALL_DIR
 
 echo "LoRaWAN Gateway installer"
 
@@ -34,12 +36,6 @@ make
 make install
 ldconfig
 popd
-
-# Install LoRaWAN packet forwarder repositories
-#INSTALL_DIR="/opt/ttn-gateway"
-INSTALL_DIR=$SCRIPT_DIR
-if [ ! -d "$INSTALL_DIR" ]; then mkdir $INSTALL_DIR; fi
-pushd $INSTALL_DIR
 
 # Build LoRa gateway app
 
