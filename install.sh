@@ -9,34 +9,17 @@ if [ $UID != 0 ]; then
 fi
 
 SCRIPT_DIR=$(pwd)
+SCRIPT_DIR="$SCRIPT_DIR/LoRa"
+if [ ! -d "$SCRIPT_DIR" ]; then mkdir $SCRIPT_DIR; fi
+pushd $SCRIPT_DIR
 
-VERSION="master"
-if [[ $1 != "" ]]; then VERSION=$1; fi
+echo "LoRaWAN Gateway installer"
 
-echo "The Things Network Gateway installer"
-echo "Version $VERSION"
+GATEWAY_EUI=$(cat /sys/class/net/eth0/address | sed 's/://g') #mac from miips
+GATEWAY_EUI="effe$GATEWAY_EUI"
+#GATEWAY_EUI=${GATEWAY_EUI^^} # toupper
 
-# Request gateway configuration data
-# There are two ways to do it, manually specify everything
-# or rely on the gateway EUI and retrieve settings files from remote (recommended)
-echo "Gateway configuration:"
-
-# Try to get gateway ID from MAC address
-# First try eth0, if that does not exist, try wlan0 (for RPi Zero)
-GATEWAY_EUI_NIC="eth0"
-if [[ `grep "$GATEWAY_EUI_NIC" /proc/net/dev` == "" ]]; then
-    GATEWAY_EUI_NIC="wlan0"
-fi
-
-if [[ `grep "$GATEWAY_EUI_NIC" /proc/net/dev` == "" ]]; then
-    echo "ERROR: No network interface found. Cannot set gateway ID."
-    exit 1
-fi
-
-GATEWAY_EUI=$(ip link show $GATEWAY_EUI_NIC | awk '/ether/ {print $2}' | awk -F\: '{print $1$2$3"FFFE"$4$5$6}')
-GATEWAY_EUI=${GATEWAY_EUI^^} # toupper
-
-echo "Detected EUI $GATEWAY_EUI from $GATEWAY_EUI_NIC"
+echo "USING $GATEWAY_EUI as gateway EUI."
 
 # Check dependencies
 echo "Installing dependencies..."
@@ -53,7 +36,8 @@ ldconfig
 popd
 
 # Install LoRaWAN packet forwarder repositories
-INSTALL_DIR="/opt/ttn-gateway"
+#INSTALL_DIR="/opt/ttn-gateway"
+INSTALL_DIR=$SCRIPT_DIR
 if [ ! -d "$INSTALL_DIR" ]; then mkdir $INSTALL_DIR; fi
 pushd $INSTALL_DIR
 
@@ -75,8 +59,6 @@ cp $SCRIPT_DIR/Makefile-tx-test ./util_tx_test/Makefile
 cp $SCRIPT_DIR/library.cfg ./libloragw/
 cp $SCRIPT_DIR/Makefile-gw ./Makefile
 
-sed -i -e 's/CFG_SPI= native/CFG_SPI= ftdi/g' ./libloragw/library.cfg
-
 make
 popd
 
@@ -95,21 +77,16 @@ popd
 LOCAL_CONFIG_FILE=$INSTALL_DIR/packet_forwarder/lora_pkt_fwd/local_conf.json
 
 #config local_conf.json
+echo -e "{\n\t\"gateway_conf\": {\n\t\t\"gateway_ID\": \"$GATEWAY_EUI\",\n\t\t\"server_address\": \"server_address\",\n\t\t\"serv_port_up\": 1700,\n\t\t\"serv_port_down\": 1700\n\t}\n}" >$LOCAL_CONFIG_FILE
 
-    echo -e "{\n\t\"gateway_conf\": {\n\t\t\"gateway_ID\": \"$GATEWAY_EUI\",\n\t\t\"server_address\": \"router.eu.thethings.network\",\n\t\t\"serv_port_up\": 1700,\n\t\t\"serv_port_down\": 1700,\n\t\t\"serv_enabled\": true,\n\t\t\"ref_latitude\": 0,\n\t\t\"ref_longitude\": 0,\n\t\t\"ref_altitude\": 0 \n\t}\n}" >$LOCAL_CONFIG_FILE
-
-echo "Gateway EUI is: $GATEWAY_EUI"
-echo "The hostname is: $NEW_HOSTNAME"
-echo "Open TTN console and register your gateway using your EUI: https://console.thethingsnetwork.org/gateways"
-echo
 echo "Installation completed."
 
-# Start packet forwarder as a service
-#cp ./start.sh $INSTALL_DIR/bin/
-cp $SCRIPT_DIR/ttn-gateway.service /lib/systemd/system/
-systemctl enable ttn-gateway.service
+#update service file
+WORKING_DIR="$INSTALL_DIR/packet_forwarder/lora_pkt_fwd/"
+EXEC_START="$INSTALL_DIR/packet_forwarder/lora_pkt_fwd/lora_pkt_fwd"
 
-echo "The system will reboot in 5 seconds..."
-sleep 5
-shutdown -r now
+sed -i -e "s/WORKING_DIRECTORY/$WORKING_DIR/g" $SCRIPT_DIR/lora-packet-forwarder.service
+sed -i -e "s/EXEC_START/$EXEC_START/g" $SCRIPT_DIR/lora-packet-forwarder.service
 
+cp $SCRIPT_DIR/lora-packet-forwarder.service /lib/systemd/system/
+systemctl enable lora-packet-forwarder.service

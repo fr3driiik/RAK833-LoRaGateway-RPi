@@ -1,0 +1,12 @@
+[Unit]
+Description=LoRa Packet Forwarder
+
+[Service]
+WorkingDirectory=WORKING_DIRECTORY
+ExecStart=EXEC_START
+SyslogIdentifier=lora-packet-forwarder
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
