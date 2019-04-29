@@ -81,8 +81,8 @@ echo "Installation completed."
 WORKING_DIR="$INSTALL_DIR/packet_forwarder/lora_pkt_fwd/"
 EXEC_START="$INSTALL_DIR/packet_forwarder/lora_pkt_fwd/lora_pkt_fwd"
 
-sed -i -e "s/WORKING_DIRECTORY/$WORKING_DIR/g" $SCRIPT_DIR/lora-packet-forwarder.service
-sed -i -e "s/EXEC_START/$EXEC_START/g" $SCRIPT_DIR/lora-packet-forwarder.service
+sed -i -e "s@WORKING_DIRECTORY@$WORKING_DIR@g" $SCRIPT_DIR/lora-packet-forwarder.service
+sed -i -e "s@EXEC_START@$EXEC_START@g" $SCRIPT_DIR/lora-packet-forwarder.service
 
 cp $SCRIPT_DIR/lora-packet-forwarder.service /lib/systemd/system/
 systemctl enable lora-packet-forwarder.service
